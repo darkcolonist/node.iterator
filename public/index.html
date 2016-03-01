@@ -1,0 +1,61 @@
+<!doctype html>
+<html ng-app="myApp">
+  <head>
+    <title>dc.node.iterator</title>
+
+    <link rel="shortcut icon" type="image/png" href="./assets/img/favicon.png" />
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" integrity="sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css" integrity="sha384-aUGj/X2zp5rLCbBxumKTCw2Z50WgIr1vs/PFN4praOTvYXWlVyh2UtNUU0KAUhAX" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="./assets/css/custom.css" />
+  </head>
+  <body>
+
+    <div ng-controller="AppCtrl">
+      <h1>node iterator is live!</h1>
+
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h3 class="panel-title"><span class="glyphicon glyphicon-stats" aria-hidden="true"></span> Status</h3>
+        </div>
+        <table class="table table-striped">
+          <tr>
+            <th>Iterator</th>
+            <th>Url</th>
+            <th>Status</th>
+            <th>Elapsed</th>
+            <th>Waiting</th>
+            <th>Runs</th>
+            <th>Added</th>
+          </tr>
+          <tr ng-repeat="iterator in iterators">
+            <td>
+              <button type="button" class="btn btn-xs" 
+                title="{{iterator.paused ? 'resume '+iterator.name : 'pause '+iterator.name}}"
+                ng-class="iterator.paused ? 'btn-success' : 'btn-default'"
+                ng-click="iterator.paused ? resume_queue(iterator.name) : pause_queue(iterator.name)">
+                  <span ng-show="!iterator.paused" class="glyphicon glyphicon-pause" aria-hidden="true"></span>
+                  <span ng-show="iterator.paused" class="glyphicon glyphicon-play" aria-hidden="true"></span>
+              </button>
+              <td><span ng-bind="iterator.url"></span></td>
+              <td><span ng-bind="iterator.status"></span></td>
+              <td><span ng-bind="iterator.elapsed"></span></td>
+              <td><span ng-bind="iterator.waiting"></span></td>
+              <td><span ng-bind="iterator.runs"></span></td>
+              <td><span ng-bind="iterator.added"></span></td>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <script src="./assets/js/ajax_libs_socket.io_1.3.7_socket.io.min.js"></script>
+    <script src="./assets/js/ajax_libs_angularjs_1.4.7_angular.min.js"></script>
+    <script src="./assets/js/jquery-1.11.3.min.js"></script>
+    <script src="./assets/js/bootstrap_3.3.5_js_bootstrap.min.js"></script>
+    <script src="./assets/js/controllers/client.js"></script>
+  </body>
+</html>

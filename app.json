@@ -1,0 +1,10 @@
+{
+  "name"         : "dc-node-iterator",
+  "script"       : "server.js",
+  "error_file"   : "./logs/dc-node-iterator-err.log",
+  "out_file"     : "./logs/dc-node-iterator-out.log",
+  "pid_file"     : "./logs/dc-node-iterator.pid",
+  "ignore_watch" : ["logs", "node_modules", "public", "data"],
+  "max_restarts" : 10, // defaults to 15
+  "watch"        : true
+}
