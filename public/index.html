@@ -19,19 +19,26 @@
 
       <div class="panel panel-default">
         <div class="panel-heading">
-          <h3 class="panel-title"><span class="glyphicon glyphicon-stats" aria-hidden="true"></span> Status</h3>
+          <h3 class="panel-title"><span class="glyphicon glyphicon-stats" aria-hidden="true"></span> Iterators
+            <button type="button" class="btn btn-xs btn-success" 
+              title="add new iterator"
+              data-toggle="modal"
+              data-target=".new-iterator-modal">
+                <span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+            </button>
+          </h3>
         </div>
         <table class="table table-striped">
           <tr>
-            <th>Iterator</th>
-            <th>Url</th>
-            <th>Status</th>
-            <th>Elapsed</th>
-            <th>Waiting</th>
-            <th>Runs</th>
-            <th>Added</th>
+            <th width="70px">&nbsp;</th>
+            <th>&nbsp;</th>
+            <th width="70px">&nbsp;</th>
+            <th width="50px">Run</th>
+            <th width="50px">Wait</th>
+            <th width="50px">Total</th>
+            <th width="100px">Added</th>
           </tr>
-          <tr ng-repeat="iterator in iterators">
+          <tr ng-repeat="iterator in iterators" class="iterator-{{iterator.status}}">
             <td>
               <button type="button" class="btn btn-xs" 
                 title="{{iterator.paused ? 'resume '+iterator.name : 'pause '+iterator.name}}"
@@ -39,6 +46,11 @@
                 ng-click="iterator.paused ? resume_queue(iterator.name) : pause_queue(iterator.name)">
                   <span ng-show="!iterator.paused" class="glyphicon glyphicon-pause" aria-hidden="true"></span>
                   <span ng-show="iterator.paused" class="glyphicon glyphicon-play" aria-hidden="true"></span>
+              </button>
+              <button type="button" class="btn btn-xs btn-danger" 
+                title="delete {{iterator.name}}"
+                ng-click="iterator.paused ? resume_queue(iterator.name) : pause_queue(iterator.name)">
+                  <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
               </button>
               <td><span ng-bind="iterator.url"></span></td>
               <td><span ng-bind="iterator.status"></span></td>
@@ -49,6 +61,49 @@
             </td>
           </tr>
         </table>
+      </div>
+
+      <div class="new-iterator-modal fade modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-md">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title" id="myModalLabel">Create a new Iterator</h4>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-success" role="alert" ng-show="iterator.save_success">
+                <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+                <strong>Iterator added!</strong>
+              </div>
+              <div class="alert alert-danger" role="alert" ng-show="iterator.save_error">
+                <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+                <strong>Iterator not added!</strong>&nbsp;<span ng-show="iterator.save_error_message"></span>
+              </div>
+              <form class="form-inline">
+                <div class="form-group">
+                  <label class="sr-only" for="txtUrl">URL to Iterate</label>
+                  <div class="input-group">
+                    <div class="input-group-addon">
+                      <span class="glyphicon glyphicon-globe" aria-hidden="true" title="the url we will call (eg. http://localhost/routines/routine-1.php)"></span>
+                    </div>
+                    <input type="text" class="form-control" ng-model="iterator.url" placeholder="http://example.com">
+                  </div>
+                  <div class="input-group">
+                    <div class="input-group-addon">
+                      <span class="glyphican glyphicon-hourglass" aria-hidden="true" title="cooldown, the time (in seconds) we will wait until we call the url again (eg. 1)"></span>
+                    </div>
+                    <input type="text" class="form-control" ng-model="iterator.cooldown" placeholder="0">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" ng-click="add_iterator()">
+                  <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span> save
+                </button>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 

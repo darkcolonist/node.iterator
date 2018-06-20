@@ -9,3 +9,15 @@ pre {
 .pointer{
   cursor: pointer;
 }
+
+.iterator-waiting{
+  color: #9BA035;
+}
+
+.iterator-running{
+  color: green;
+}
+
+.iterator-paused{
+  color: #aaa;
+}

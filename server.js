@@ -12,17 +12,52 @@ var express    = require('express'),
     bodyParser = require('body-parser'),
     http       = require('http'),
     request    = require('request'),
-    nedb       = require('nedb'),
     moment     = require('moment'),
 
     app        = express(),
     server     = http.createServer(app),
-    io         = require('socket.io').listen(server)
+    io         = require('socket.io').listen(server),
+
+    log = require('./lib/helper.log'),
+    persistenceFacade = require('./lib/facade.persistence');
+
+
 
 app.use(express.static(__dirname + "/public"))
-app.use(bodyParser.urlencoded({
-  extended: true
-}))
+app.use(bodyParser.json())
+
+app.post('/add_iterator', function(req, res){
+  log.log(["new iterator",req.body]);
+
+  if(typeof req.body.url === 'undefined'){
+    res.json(
+      { 
+        code : 1,
+        message : "ERROR: url parameter is not a valid url"
+      }
+    )
+    return
+  }
+
+  if(Number(parseFloat(req.body.cooldown)) != req.body.cooldown || req.body.cooldown < 1){
+    res.json(
+      { 
+        code : 1,
+        message : "ERROR: cooldown is invalid"
+      }
+    )
+    return 
+  }
+  
+  app_iterator.add_iterator(req.body.url, req.body.cooldown)
+
+  res.json(
+    { 
+      code : 0,
+      message : "SUCCESS: iterator added"
+    }
+  )
+})
 
 var app_iterator = {
   status: {
@@ -38,17 +73,51 @@ var app_iterator = {
     setTimeout(app_iterator.broadcast_lastest_status_worker, 1000)
   },
 
+  curl: function(an_iterator, url, callback){
+    var date_started = moment().format("YYYY-MM-DD HH:mm:ss");
+
+    request.get(url)
+      .on("response", function(){
+        var date_ended = moment().format("YYYY-MM-DD HH:mm:ss");
+        callback(an_iterator, {
+          status: "success",
+          date_started: date_started,
+          date_ended: date_ended
+        })
+      })
+      .on("error", function(err){
+        var date_ended = moment().format("YYYY-MM-DD HH:mm:ss");
+        log.log("there was a problem calling "+url+". details: "+err,"error");
+        callback(an_iterator, {
+          status: "error",
+          error: err,
+          date_started: date_started,
+          date_ended: date_ended
+        })
+      })
+  },
+
   worker: function(){
     for (var i = 0; i < this.status.iterators.length; i++) {
       var current_iterator = this.status.iterators[i]
 
       if(current_iterator.waiting == 0){
         current_iterator.waiting = current_iterator.cooldown
-        current_iterator.runs++
+        current_iterator.status = "running"
+        
+        app_iterator.curl(current_iterator, current_iterator.url, function(an_iterator, options){
+            an_iterator.status = "waiting"
+            an_iterator.runs++
+            an_iterator.elapsed = 0
+
+            persistenceFacade.updateIterator(an_iterator);
+        })
       }
 
       if(current_iterator.status == 'waiting')
         current_iterator.waiting--
+      else if(current_iterator.status == 'running')
+        current_iterator.elapsed++
       else
         current_iterator.waiting = current_iterator.cooldown
     }
@@ -58,56 +127,70 @@ var app_iterator = {
     }, 1000)
   },
 
-  test_init: function(){
-    var sample_iterators = [
-      {
-        url: "http://dev.test/curlable.php?client=nechrons",
-        cooldown: 1,
-        enabled: true,
-        status: "waiting",
-        elapsed: 0,
-        waiting: 1,
-        runs: 0,
-        added: "2016-02-23 00:00:00"
-      },
-      {
-        url: "http://dev.test/curlable.php?client=jupiter",
-        cooldown: 4,
-        enabled: true,
-        status: "waiting",
-        elapsed: 0,
-        waiting: 4,
-        runs: 0,
-        added: "2016-02-23 00:00:00"
-      },
-      {
-        url: "http://dev.test/curlable.php?client=chronus",
-        cooldown: 7,
-        enabled: true,
-        status: "waiting",
-        elapsed: 0,
-        waiting: 7,
-        runs: 0,
-        added: "2016-02-23 00:00:00"
-      },
-      {
-        url: "http://dev.test/curlable.php?client=thanatos",
-        cooldown: 10,
-        enabled: true,
-        status: "waiting",
-        elapsed: 0,
-        waiting: 10,
-        runs: 0,
-        added: "2016-02-23 00:00:00"
-      }
-    ]
-
-    for (var i_index = 0; i_index < sample_iterators.length; i_index++) {
-      sample_iterators[i_index].name = app_util.truncate_middle(
-        sample_iterators[i_index].url, 40, " ... ")
+  add_iterator: function(url, cooldown){
+    var new_iterator = {
+      url: url,
+      cooldown: cooldown,
+      name: app_util.truncate_middle(url, 40, " ... "),
+      enabled: true,
+      status: "waiting",
+      elapsed: 0,
+      waiting: cooldown,
+      runs: 0,
+      added: moment().format("YYYY-MM-DD HH:mm:ss")
     }
 
-    this.status.iterators = sample_iterators
+    this.status.iterators.push(new_iterator);
+    persistenceFacade.addIterator(new_iterator);
+  },
+
+  init: async function(){
+    persistenceFacade.init();
+
+    // load iterators from database
+    this.status.iterators = await persistenceFacade.fetchIterators();
+
+    server.listen(settings.port)
+    log.log("Server is listening to port "+settings.port)
+
+    // start the iterator worker
+    app_iterator.worker()
+
+    // start the broadcast worker
+    app_iterator.broadcast_lastest_status_worker()
+  },
+
+  test_init: function(){
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=nechrons", 1)
+    this.add_iterator("http://dev.test/curlable.php?client=jupiter", 4)
+    this.add_iterator("http://dev.test/curlable.php?client=chronus", 7)
+    this.add_iterator("http://dev.test/curlable.php?client=thanatos", 10)
+
+    /**
+     * available test-cases for curlable:
+     *   http://dev.test/curlable.php?client=nechrons
+     *   http://dev.test/curlable.php?client=space
+     *   http://dev.test/curlable.php?client=olympus
+     *   http://dev.test/curlable.php?client=thanus
+     *   http://dev.test/curlable.php?client=jupiter
+     *   http://dev.test/curlable.php?client=chronus
+     *   http://dev.test/curlable.php?client=thanatos
+     *   http://dev.test/curlable.php?client=blackhole
+     */
   }
 }
 
@@ -133,15 +216,6 @@ io.on('connection', function(socket){
   // do something on client connection
 })
 
-
-server.listen(settings.port)
-console.log("Server is listening to port "+settings.port)
-
 // init the app (load from database)
-app_iterator.test_init()
-
-// start the iterator worker
-app_iterator.worker()
-
-// start the broadcast worker
-app_iterator.broadcast_lastest_status_worker()
+// app_iterator.test_init()
+app_iterator.init()
