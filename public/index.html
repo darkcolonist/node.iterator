@@ -49,7 +49,7 @@
               </button>
               <button type="button" class="btn btn-xs btn-danger" 
                 title="delete {{iterator.name}}"
-                ng-click="iterator.paused ? resume_queue(iterator.name) : pause_queue(iterator.name)">
+                ng-click="delete_iterator(iterator)">
                   <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
               </button>
               <td><span ng-bind="iterator.url"></span></td>

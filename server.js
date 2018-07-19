@@ -26,9 +26,17 @@ var express    = require('express'),
 app.use(express.static(__dirname + "/public"))
 app.use(bodyParser.json())
 
-app.post('/add_iterator', function(req, res){
-  log.log(["new iterator",req.body]);
+app.get('/delete_iterator/:iterator_id', function(req, res){
 
+  app_iterator.delete_iterator(req.params.iterator_id);
+
+  res.json({
+    code: 0,
+    message: "SUCCESS: deleting iterator " + req.params.iterator_id
+  });
+});
+
+app.post('/add_iterator', function(req, res){
   if(typeof req.body.url === 'undefined'){
     res.json(
       { 
@@ -49,7 +57,7 @@ app.post('/add_iterator', function(req, res){
     return 
   }
   
-  app_iterator.add_iterator(req.body.url, req.body.cooldown)
+  app_iterator.add_iterator(req.body.url, req.body.cooldown);
 
   res.json(
     { 
@@ -106,11 +114,11 @@ var app_iterator = {
         current_iterator.status = "running"
         
         app_iterator.curl(current_iterator, current_iterator.url, function(an_iterator, options){
-            an_iterator.status = "waiting"
-            an_iterator.runs++
-            an_iterator.elapsed = 0
+          an_iterator.status = "waiting"
+          an_iterator.runs++
+          an_iterator.elapsed = 0
 
-            persistenceFacade.updateIterator(an_iterator);
+          persistenceFacade.updateIterator(an_iterator);
         })
       }
 
@@ -127,6 +135,19 @@ var app_iterator = {
     }, 1000)
   },
 
+  delete_iterator: function(iterator_id){
+    var iterator_index = app_iterator.status.iterators.findIndex(function(e){
+      return e._id == iterator_id;
+    });
+
+    var iterator = this.status.iterators[iterator_index];
+
+    this.status.iterators.splice(iterator_index, 1);
+    persistenceFacade.deleteIterator(iterator);
+
+    log.log(["deleted iterator",iterator]);
+  },
+
   add_iterator: function(url, cooldown){
     var new_iterator = {
       url: url,
@@ -140,24 +161,47 @@ var app_iterator = {
       added: moment().format("YYYY-MM-DD HH:mm:ss")
     }
 
-    this.status.iterators.push(new_iterator);
-    persistenceFacade.addIterator(new_iterator);
+    persistenceFacade.addIterator(new_iterator, inserted_iterator);
+
+    function inserted_iterator(err, new_iterator){
+      app_iterator.status.iterators.push(new_iterator);
+
+      app_iterator.sort_iterators();
+
+      log.log(["new iterator",new_iterator]);
+    }
   },
 
-  init: async function(){
+  sort_iterators: function(){
+    app_iterator.status.iterators.sort(mySorter);
+
+    function mySorter(a,b){
+      if (a.url < b.url)
+        return -1;
+      if (a.url > b.url)
+        return 1;
+      return 0;
+    }
+  },
+
+  init: function(){
     persistenceFacade.init();
 
     // load iterators from database
-    this.status.iterators = await persistenceFacade.fetchIterators();
+    persistenceFacade.fetchIterators(fetchedIterators);
 
-    server.listen(settings.port)
-    log.log("Server is listening to port "+settings.port)
+    function fetchedIterators(err, iterators){
+      app_iterator.status.iterators = iterators;
 
-    // start the iterator worker
-    app_iterator.worker()
+      server.listen(settings.port)
+      log.log("Server is listening to port "+settings.port)
 
-    // start the broadcast worker
-    app_iterator.broadcast_lastest_status_worker()
+      // start the iterator worker
+      app_iterator.worker()
+
+      // start the broadcast worker
+      app_iterator.broadcast_lastest_status_worker()
+    }
   },
 
   test_init: function(){

@@ -19,7 +19,7 @@ myApp
     })
 
     $scope.add_iterator = function(){
-      console.log($scope.iterator);
+      // console.log($scope.iterator);
       $http.post('/add_iterator', $scope.iterator).success(function(response){
         if(response.code == 0){
           $scope.iterator.save_success = true
@@ -32,6 +32,24 @@ myApp
           $scope.iterator.save_success = false
           $scope.iterator.save_error = false
         }, 5000)
+      })
+    }
+
+    $scope.delete_iterator = function(iterator){
+      // console.log("deleting ", iterator._id);
+
+      $http.get('/delete_iterator/'+iterator._id).success(function(response){
+        if(response.code == 0){
+          // $scope.iterator.save_success = true
+        }else{
+          // $scope.iterator.save_error = true
+          // $scope.iterator.save_error_message = response.message
+        }
+
+        // setTimeout(function(){
+        //   $scope.iterator.save_success = false
+        //   $scope.iterator.save_error = false
+        // }, 5000)
       })
     }
 
